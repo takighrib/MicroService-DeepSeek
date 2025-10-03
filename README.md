@@ -15,7 +15,7 @@
 
 Ce document décrit l'évolution de l'architecture microservices de DeepSeek d'une architecture simple à 1 API Gateway vers une architecture résiliente avec multiple gateways et fallbacks.
 
-![Architecture  (/workspaces/MicroService-DeepSeek/img1.png)]
+![Architecture  (/img1.png)]
 
 ## 📊 Architectures Comparées
 
