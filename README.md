@@ -1,4 +1,8 @@
 # 🏗️ Architecture Microservices DeepSeek avec API Gateway
+| Student Name |  Class |
+|-------------------|----------|
+| **Yesmine Zhioua** | 3 IDL 2 |
+| **Ahmed Takieddine Ghrib**  | 3 IDL 2 |
 
 Ce document présente l'évolution de l'architecture microservices de DeepSeek, comparant une approche simple avec une seule API Gateway à une architecture avancée avec middleware et multiples gateways.
 
