@@ -1,0 +1,484 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+\usepackage{geometry}
+\usepackage{xcolor}
+\geometry{left=1.5cm, right=1.5cm, top=2cm, bottom=2cm}
+
+% ============ Styles TikZ ============
+\tikzset{
+    gateway/.style={
+        rectangle, rounded corners, 
+        minimum width=3cm, minimum height=1cm,
+        text centered, draw=black, fill=red!30,
+        font=\bfseries
+    },
+    loadbalancer/.style={
+        rectangle, rounded corners,
+        minimum width=2.8cm, minimum height=0.9cm,
+        text centered, draw=black, fill=orange!30
+    },
+    service/.style={
+        rectangle, rounded corners,
+        minimum width=2.5cm, minimum height=0.8cm,
+        text centered, draw=black, fill=blue!20
+    },
+    database/.style={
+        cylinder, cylinder uses custom fill,
+        cylinder body fill=green!20,
+        cylinder end fill=green!30,
+        minimum width=2cm, minimum height=0.8cm,
+        draw=black, text centered,
+        shape border rotate=90
+    },
+    infrastructure/.style={
+        rectangle, rounded corners,
+        minimum width=2.5cm, minimum height=0.8cm,
+        text centered, draw=black, fill=pink!30
+    },
+    arrow/.style={
+        -Stealth, thick
+    },
+    dashedarrow/.style={
+        -Stealth, thick, dashed
+    },
+    layer/.style={
+        rectangle, draw=black, thick, dashed,
+        inner sep=10pt
+    },
+    client/.style={
+        ellipse, draw, fill=blue!20, text centered, minimum height=1cm
+    },
+    middleware/.style={
+        rectangle, draw, fill=purple!30, text centered, rounded corners, minimum width=4cm, minimum height=1cm
+    },
+    fallback/.style={
+        rectangle, draw, dashed, thick, fill=red!20, text centered, rounded corners, minimum width=2.5cm, minimum height=1cm
+    }
+}
+
+\begin{document}
+
+\title{Architecture Microservices et API Gateway de DeepSeek}
+\author{}
+\date{}
+\maketitle
+
+\tableofcontents
+\newpage
+
+% =============================================
+\section{Architecture Initiale - 1 API Gateway}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=1.5cm and 1.2cm, auto]
+
+% API Gateway
+\node[gateway] (gateway) {API Gateway};
+
+% Load Balancers
+\node[loadbalancer, below left=1.2cm and 0.5cm of gateway] (lbweb) {Load Balancer\\Web};
+\node[loadbalancer, below right=1.2cm and 0.5cm of gateway] (lbapi) {Load Balancer\\API};
+
+% Services
+\node[service, below left=1.5cm and 0cm of lbweb] (auth) {Service\\d'Authentification};
+\node[service, right=0.8cm of auth] (users) {Service\\Utilisateurs};
+\node[service, right=0.8cm of users] (chat) {Service\\Chat/Core AI};
+\node[service, right=0.8cm of chat] (inference) {Service\\Inference};
+
+\node[service, below=1.2cm of auth] (models) {Service\\Modèles};
+\node[service, below=1.2cm of users] (training) {Service\\Entraînement};
+\node[service, below=1.2cm of chat] (monitoring) {Service\\Monitoring};
+\node[service, below=1.2cm of inference] (storage) {Service\\Stockage};
+
+% Infrastructure
+\node[infrastructure, below=1.5cm of models] (kafka) {Message Queue\\(Kafka)};
+\node[infrastructure, below=1.5cm of storage] (redis) {Cache\\Redis};
+
+% Bases de données
+\node[database, below=1.5cm of kafka] (dbauth) {DB Auth};
+\node[database, right=0.6cm of dbauth] (dbusers) {DB Users};
+\node[database, right=0.6cm of dbusers] (dbchat) {DB Chat};
+\node[database, right=0.6cm of dbchat] (dbmodels) {DB Models};
+\node[database, below=1cm of dbusers] (dbtraining) {DB Training};
+
+% Flèches principales
+\draw[arrow] (gateway) -- (lbweb);
+\draw[arrow] (gateway) -- (lbapi);
+\draw[arrow] (lbweb) -- (auth);
+\draw[arrow] (lbapi) -- (chat);
+
+\draw[dashedarrow] (auth) -- (users);
+\draw[dashedarrow] (users) -- (chat);
+\draw[dashedarrow] (chat) -- (inference);
+\draw[dashedarrow] (auth) -- (chat);
+\draw[dashedarrow] (auth) -- (inference);
+
+\draw[dashedarrow] (models) -- (training);
+\draw[dashedarrow] (training) -- (monitoring);
+\draw[dashedarrow] (models) -- (monitoring);
+
+\draw[dashedarrow] (auth) -- (models);
+\draw[dashedarrow] (users) -- (training);
+\draw[dashedarrow] (chat) -- (monitoring);
+\draw[dashedarrow] (inference) -- (storage);
+\draw[dashedarrow] (chat) -- (models);
+\draw[dashedarrow] (inference) -- (models);
+\draw[dashedarrow] (users) -- (monitoring);
+
+\draw[dashedarrow] (models) -- (kafka);
+\draw[dashedarrow] (training) -- (kafka);
+\draw[dashedarrow] (chat) -- (kafka);
+\draw[dashedarrow] (monitoring) -- (kafka);
+
+\draw[dashedarrow] (chat) -- (redis);
+\draw[dashedarrow] (inference) -- (redis);
+\draw[dashedarrow] (users) -- (redis);
+
+\draw[arrow] (auth) -- (dbauth);
+\draw[arrow] (users) -- (dbusers);
+\draw[arrow] (chat) -- (dbchat);
+\draw[arrow] (models) -- (dbmodels);
+\draw[arrow] (training) -- (dbtraining);
+\draw[arrow] (storage) -- (dbmodels);
+
+\end{tikzpicture}
+\caption{Architecture initiale avec 1 API Gateway}
+\end{figure}
+\subsection*{Description de l'Architecture}
+L'architecture présentée dans la Figure 1 repose sur un modèle centralisé utilisant une unique API Gateway. Cette approche architecturale suit le pattern \textbf{API Gateway} qui sert de point d'entrée unique pour toutes les requêtes client.
+
+\subsection*{Avantages de cette Architecture}
+
+\begin{itemize}
+    \item \textbf{Point d'entrée unique} : Centralise toutes les requêtes et simplifie la gestion des clients
+    \item \textbf{Découplage} : Isole les clients des microservices internes
+    \item \textbf{Sécurité centralisée} : Permet d'implémenter l'authentification, l'autorisation et le chiffrement à un seul endroit
+    \item \textbf{Agrégation de données} : Possibilité de composer des réponses à partir de multiples microservices
+    \item \textbf{Routing intelligent} : Aiguillage des requêtes vers les services appropriés
+\end{itemize}
+
+\subsection*{Considérations Techniques}
+
+\begin{itemize}
+    \item \textbf{Single Point of Failure} : L'API Gateway devient un point critique de l'architecture
+    \item \textbf{Potentiel goulot d'étranglement} : Toutes les requêtes passent par ce composant
+    \item \textbf{Complexité} : L'API Gateway peut devenir complexe si elle gère trop de responsabilités
+    \item \textbf{Scalabilité} : Nécessite une stratégie de mise à l'échelle appropriée
+\end{itemize}
+\subsection{Avantage et limites de l'architecture initiale}
+\begin{itemize}
+    \item \textbf{Avantages :}
+    \begin{itemize}
+        \item Simplicité → une seule porte d’entrée
+        \item Facile à déployer et maintenir
+        \item Centralisation des règles (auth, quotas, monitoring)
+    \end{itemize}
+    \item \textbf{Limites / faiblesses :}
+    \begin{itemize}
+        \item Single Point of Failure (SPOF)
+        \item Scalabilité limitée
+        \item Couplage fort entre services
+        \item Surface d’attaque plus large
+    \end{itemize}
+\end{itemize}
+
+
+\section{Analyse de fonctionnement}
+
+
+
+\tikzstyle{startstop} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=blue!20]
+\tikzstyle{process} = [rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=green!20]
+\tikzstyle{decision} = [diamond, aspect=2, text centered, draw=black, fill=orange!20]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+\begin{document}
+\begin{tikzpicture}[node distance=1.5cm]
+
+% Nodes
+\node (client) [startstop] {1. Client envoie requête};
+\node (apigw) [process, below of=client] {2. API Gateway → Validation};
+\node (lb) [process, below of=apigw] {3. Load Balancer API → Distribution};
+\node (auth) [process, below of=lb] {4. Service d'Auth → Vérification API key};
+\node (users) [process, below of=auth] {5. Service Utilisateurs → Vérification quota};
+\node (cachecheck) [process, below of=users] {6. Cache Redis → Recherche réponse en cache};
+\node (decision) [decision, below of=cachecheck, yshift=-0.5cm] {Réponse trouvée ?};
+\node (returncache) [startstop, right of=decision, xshift=7cm] {Retour immédiat};
+
+\node (chat) [process, below of=decision, yshift=-1.5cm] {7. Service Chat/Core AI → Préparation contexte};
+\node (model) [process, below of=chat] {8. Service Modèles → Sélection modèle};
+\node (inference) [process, below of=model] {9. Service Inference → Génération réponse};
+\node (cachewrite) [process, below of=inference] {10. Cache Redis → Stockage réponse};
+\node (monitoring) [process, below of=cachewrite] {11. Service Monitoring → Enregistrement métriques};
+\node (clientreturn) [startstop, below of=monitoring] {12. Retour au client (streaming ou complet)};
+
+% Arrows
+\draw [arrow] (client) -- (apigw);
+\draw [arrow] (apigw) -- (lb);
+\draw [arrow] (lb) -- (auth);
+\draw [arrow] (auth) -- (users);
+\draw [arrow] (users) -- (cachecheck);
+\draw [arrow] (cachecheck) -- (decision);
+
+\draw [arrow] (decision.east) -- (returncache.west) node[midway,above] {Oui};
+\draw [arrow] (decision.south) -- (chat.north) node[midway,right] {Non};
+
+\draw [arrow] (chat) -- (model);
+\draw [arrow] (model) -- (inference);
+\draw [arrow] (inference) -- (cachewrite);
+\draw [arrow] (cachewrite) -- (monitoring);
+\draw [arrow] (monitoring) -- (clientreturn);
+
+\end{tikzpicture}
+
+\section{Analyse du diagramme de flux}
+
+Le diagramme de flux présenté illustre le fonctionnement complet d'une architecture d'API intelligente permettant la gestion, la validation et le traitement d'une requête client à travers plusieurs services distribués. Ce processus peut être décomposé en plusieurs phases principales :
+
+\subsection{Phase 1 : Entrée et validation}
+\begin{itemize}
+    \item \textbf{Étape 1 : Client envoie requête} \\
+    Le processus débute lorsque le client soumet une requête vers l’API.
+    
+    \item \textbf{Étape 2 : API Gateway → Validation} \\
+    La requête est d’abord interceptée par la passerelle d’API (\textit{API Gateway}) qui effectue les vérifications initiales (format, intégrité, autorisations de base).
+    
+    \item \textbf{Étape 3 : Load Balancer API → Distribution} \\
+    Le répartiteur de charge (\textit{Load Balancer}) distribue ensuite la requête vers une instance d’API disponible, garantissant ainsi l’équilibrage des ressources.
+\end{itemize}
+
+\subsection{Phase 2 : Vérification et contrôle d’accès}
+\begin{itemize}
+    \item \textbf{Étape 4 : Service d’Auth → Vérification API key} \\
+    Le service d’authentification valide la clé API fournie afin d’assurer que la requête provient d’un client autorisé.
+    
+    \item \textbf{Étape 5 : Service Utilisateurs → Vérification quota} \\
+    Un contrôle des quotas est ensuite réalisé pour vérifier que l’utilisateur n’a pas dépassé la limite de requêtes autorisées.
+    
+    \item \textbf{Étape 6 : Cache Redis → Recherche réponse en cache} \\
+    Le système consulte ensuite le cache Redis afin de déterminer si une réponse pré-calculée existe déjà pour cette requête.
+\end{itemize}
+
+\subsection{Phase 3 : Décision conditionnelle}
+\begin{itemize}
+    \item Si une \textbf{réponse est trouvée}, le système renvoie un \textbf{retour immédiat} au client sans exécuter de traitement supplémentaire. \\
+    \item Dans le cas contraire, le processus continue vers la phase de traitement IA.
+\end{itemize}
+
+\subsection{Phase 4 : Traitement par l’IA}
+\begin{itemize}
+    \item \textbf{Étape 7 : Service Chat/Core AI → Préparation contexte} \\
+    Le service central prépare le contexte conversationnel ou les données nécessaires à la génération de la réponse.
+    
+    \item \textbf{Étape 8 : Service Modèles → Sélection modèle} \\
+    Le système choisit dynamiquement le modèle d’IA le plus adapté en fonction du type de requête, de la complexité et du domaine concerné.
+    
+    \item \textbf{Étape 9 : Service Inference → Génération réponse} \\
+    Le moteur d’inférence procède à la génération de la réponse finale à partir du modèle sélectionné.
+\end{itemize}
+
+\subsection{Phase 5 : Stockage et retour}
+\begin{itemize}
+    \item \textbf{Étape 10 : Cache Redis → Stockage réponse} \\
+    La réponse générée est sauvegardée dans Redis afin d’optimiser les futures requêtes similaires.
+    
+    \item \textbf{Étape 11 : Service Monitoring → Enregistrement métriques} \\
+    Les métriques liées à la requête (temps de réponse, modèle utilisé, consommation, etc.) sont enregistrées pour le suivi et l’analyse.
+    
+    \item \textbf{Étape 12 : Retour au client (streaming ou complet)} \\
+    Enfin, la réponse est transmise au client, soit en \textit{streaming} (flux progressif), soit en une seule réponse complète.
+\end{itemize}
+
+\subsection{Synthèse}
+Ce flux de traitement illustre une architecture modulaire et optimisée, combinant des mécanismes de \textbf{cache}, de \textbf{contrôle d’accès}, et de \textbf{traitement IA}. 
+Il permet d’assurer à la fois la \textbf{rapidité}, la \textbf{sécurité}, et la \textbf{scalabilité} 
+
+% =============================================
+\section{Architecture améliorée - Middleware + 2 API Gateway + Fallbacks}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.2cm,
+    client/.style={rectangle, draw=blue!50, fill=blue!10, thick, minimum width=2cm, minimum height=1cm, align=center},
+    middleware/.style={rectangle, draw=green!50, fill=green!10, thick, minimum width=3cm, minimum height=1cm, align=center},
+    gateway/.style={rectangle, draw=red!50, fill=red!10, thick, minimum width=2.5cm, minimum height=1cm, align=center},
+    service/.style={rectangle, draw=orange!50, fill=orange!10, thick, minimum width=2cm, minimum height=0.8cm, align=center}
+]
+
+% Client et Middleware
+\node (client) [client] {Client};
+\node (middleware) [middleware, below=of client] {Middleware (Router)};
+
+% Gateways positionnés symétriquement
+\node (gateway1) [gateway, below left=1.5cm and 0.5cm of middleware] {API Gateway 1 \\ (Fallback 1)};
+\node (gateway2) [gateway, below right=1.5cm and 0.5cm of middleware] {API Gateway 2 \\ (Fallback 2)};
+
+% Services pour Gateway 1 - organisés horizontalement
+\node (auth) [service, below=of gateway1, xshift=-2.2cm] {Auth \\ Service};
+\node (user) [service, below=of gateway1] {User \\ Service};
+\node (quota) [service, below=of gateway1, xshift=2.2cm] {Quota \\ Service};
+
+% Services pour Gateway 2 - organisés horizontalement
+\node (orders) [service, below=of gateway2, xshift=-2.2cm] {Orders \\ Service};
+\node (articles) [service, below=of gateway2] {Articles \\ Service};
+\node (analytics) [service, below=of gateway2, xshift=2.2cm] {Analytics \\ Service};
+
+% Arrows principales
+\draw [->, thick] (client) -- (middleware);
+\draw [->, thick] (middleware.south) -| (gateway1.north);
+\draw [->, thick] (middleware.south) -| (gateway2.north);
+
+% Connexions Gateway 1
+\draw [->, thick] (gateway1.south) -- ++(0,-0.3) -| (auth.north);
+\draw [->, thick] (gateway1.south) -- (user.north);
+\draw [->, thick] (gateway1.south) -- ++(0,-0.3) -| (quota.north);
+
+% Connexions Gateway 2
+\draw [->, thick] (gateway2.south) -- ++(0,-0.3) -| (orders.north);
+\draw [->, thick] (gateway2.south) -- (articles.north);
+\draw [->, thick] (gateway2.south) -- ++(0,-0.3) -| (analytics.north);
+
+\end{tikzpicture}
+\caption{Architecture améliorée avec Middleware, 2 API Gateways et Fallbacks}
+\label{fig:architecture}
+\end{figure}
+\subsection*{Analyse de l'architecture améliorée}
+\begin{itemize}
+    \item \textbf{Améliorations apportées :}
+    \begin{itemize}
+        \item Middleware Router analyse la requête et choisit la Gateway appropriée
+        \item Répartition de charge + isolation par domaine
+        \item 2 API Gateway séparées pour différents ensembles de services
+        \item Fallback dédié par Gateway
+    \end{itemize}
+    \item \textbf{Avantages :}
+    \begin{itemize}
+        \item Moins de charge par Gateway → meilleure scalabilité
+        \item Isolation des pannes : si Gateway 1 tombe, Gateway 2 continue
+        \item Sécurité renforcée : règles spécifiques par domaine
+        \item Système reste partiellement disponible même en cas de panne
+    \end{itemize}
+    \item \textbf{Exemples de fallback :}
+    \begin{itemize}
+        \item Gateway 1 → retourne cache Redis pour Auth/User
+        \item Gateway 2 → retourne message dégradé pour Orders
+    \end{itemize}
+\end{itemize}
+
+% =============================================
+\section{Comparaison des deux architectures}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Critère} & \textbf{1 API Gateway} & \textbf{2 API Gateway + Fallback} \\
+\hline
+Disponibilité & Point unique de défaillance (SPOF) & Haute disponibilité grâce aux fallbacks \\
+\hline
+Résilience & Faible tolérance aux pannes & Résilience accrue grâce au fallback automatique \\
+\hline
+Performance & Risque de goulot d’étranglement & Répartition de charge, meilleure scalabilité \\
+\hline
+Complexité & Simple à déployer et maintenir & Plus complexe : synchronisation, routage et fallback \\
+\hline
+Sécurité & Une seule couche de sécurité & Deux points d’entrée : stratégies différenciées \\
+\hline
+\end{tabular}
+\caption{Comparaison entre architecture simple et architecture avec 2 API Gateway + fallback}
+\end{table}
+
+
+\newpage
+
+\usetikzlibrary{shapes, arrows, positioning}
+
+\begin{document}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1cm and 1.5cm,
+    client/.style={rectangle, draw=blue!50, fill=blue!10, thick, minimum width=2cm, minimum height=1cm, align=center},
+    middleware/.style={rectangle, draw=green!50, fill=green!10, thick, minimum width=3cm, minimum height=1cm, align=center},
+    gateway/.style={rectangle, draw=red!50, fill=red!10, thick, minimum width=2.5cm, minimum height=1.2cm, align=center},
+    service/.style={rectangle, draw=orange!50, fill=orange!10, thick, minimum width=1.8cm, minimum height=0.7cm, align=center}
+]
+
+% Client
+\node[client] (client) {Client};
+
+% Middleware
+\node[middleware, below=of client] (middleware) {Middleware (Router)};
+
+% API Gateways - positionnés plus près
+\node[gateway, below left=1.5cm and 0.5cm of middleware] (gateway1) {API Gateway 1 \\ Fallback 1};
+\node[gateway, below right=1.5cm and 0.5cm of middleware] (gateway2) {API Gateway 2 \\ Fallback 2};
+
+% Services for Gateway 1 (organisés en grille compacte)
+\node[service, below left=0.8cm and 0.2cm of gateway1] (auth1) {Auth Serv 1};
+\node[service, right=0.5cm of auth1] (auth2) {Auth Serv 2};
+\node[service, below=0.3cm of auth1] (user1) {User Serv 1};
+\node[service, right=0.5cm of user1] (user2) {User Serv 2};
+\node[service, below=0.3cm of user1] (quota1) {Quota Serv 1};
+\node[service, right=0.5cm of quota1] (quota2) {Quota Serv 2};
+
+% Services for Gateway 2 (organisés en grille compacte)
+\node[service, below left=0.8cm and 0.2cm of gateway2] (orders1) {Orders Serv 1};
+\node[service, right=0.5cm of orders1] (orders2) {Orders Serv 2};
+\node[service, below=0.3cm of orders1] (articles1) {Articles Serv 1};
+\node[service, right=0.5cm of articles1] (articles2) {Articles Serv 2};
+\node[service, below=0.3cm of articles1] (analytics1) {Analytics Serv 1};
+\node[service, right=0.5cm of analytics1] (analytics2) {Analytics Serv 2};
+
+% Connections principales
+\draw[->, thick] (client) -- (middleware);
+\draw[->, thick] (middleware.south) -| (gateway1.north);
+\draw[->, thick] (middleware.south) -| (gateway2.north);
+
+% Connexions Gateway 1 - optimisées
+\draw[->] (gateway1.south) -- ++(0,-0.2) -| (auth1.north);
+\draw[->] (gateway1.south) -- ++(0,-0.2) -| (auth2.north);
+\draw[->] (gateway1.south) -- ++(0,-0.4) -| (user1.north);
+\draw[->] (gateway1.south) -- ++(0,-0.4) -| (user2.north);
+\draw[->] (gateway1.south) -- ++(0,-0.6) -| (quota1.north);
+\draw[->] (gateway1.south) -- ++(0,-0.6) -| (quota2.north);
+
+% Connexions Gateway 2 - optimisées
+\draw[->] (gateway2.south) -- ++(0,-0.2) -| (orders1.north);
+\draw[->] (gateway2.south) -- ++(0,-0.2) -| (orders2.north);
+\draw[->] (gateway2.south) -- ++(0,-0.4) -| (articles1.north);
+\draw[->] (gateway2.south) -- ++(0,-0.4) -| (articles2.north);
+\draw[->] (gateway2.south) -- ++(0,-0.6) -| (analytics1.north);
+\draw[->] (gateway2.south) -- ++(0,-0.6) -| (analytics2.north);
+
+\end{tikzpicture}
+\caption{Architecture avec Middleware, 2 API Gateways et services parallélisés}
+\end{figure}
+
+\end{document}
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+flux en microservices
+\usetikzlibrary{shapes.geometric, arrows}
