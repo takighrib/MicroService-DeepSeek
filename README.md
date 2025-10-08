@@ -3,10 +3,11 @@
 Ce document présente l'évolution de l'architecture microservices de DeepSeek, comparant une approche simple avec une seule API Gateway à une architecture avancée avec middleware et multiples gateways.
 
 ## 📋 Table des Matières
-
+Architecture Améliorée - Middleware + 2 API Gateway + Fallbacks parallele
 1. [Architecture Initiale](#1-architecture-initiale---1-api-gateway)
 2. [Analyse de Fonctionnement](#2-analyse-de-fonctionnement)
 3. [Architecture Améliorée](#3-architecture-améliorée---middleware--2-api-gateway--fallbacks-parallèle)
+4. [Architecture Améliorée - Middleware + 2 API Gateway + Fallbacks parallele](#4-Architecture Améliorée - Middleware + 2 API Gateway + Fallbacks parallele)
 4. [Comparaison des Architectures](#4-comparaison-des-deux-architectures)
 
 ## 1. Architecture Initiale - 1 API Gateway
