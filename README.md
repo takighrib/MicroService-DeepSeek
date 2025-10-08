@@ -7,7 +7,7 @@ Architecture Améliorée - Middleware + 2 API Gateway + Fallbacks parallele
 1. [Architecture Initiale](#1-architecture-initiale---1-api-gateway)
 2. [Analyse de Fonctionnement](#2-analyse-de-fonctionnement)
 3. [Architecture Améliorée](#3-architecture-améliorée---middleware--2-api-gateway--fallbacks-parallèle)
-4. [Architecture Améliorée parallele](#4-Architecture Améliorée - Middleware + 2 API Gateway + Fallbacks parallele)
+4. [Architecture parallele](#4-Architecture-parallele)
 5. [Comparaison des Architectures](#5-comparaison-des-deux-architectures)
 
 ## 1. Architecture Initiale - 1 API Gateway
@@ -80,7 +80,7 @@ Flux de requête typique :
 - Analytics Services (parallèles)
 
 
-## 4. Architecture Améliorée - Middleware + 2 API Gateway + Fallbacks parallele
+## 4. Architecture parallele
 ![Architecture](image/img4.png)
 ## 5. Comparaison des Deux Architectures
 
