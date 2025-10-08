@@ -23,10 +23,10 @@ Ce document présente l'évolution de l'architecture microservices de DeepSeek, 
 - **Surface d'attaque** plus large
 
 ### 🔧 Diagramme Architecture Initiale
-[Architecture](image/img1.png)
+![Architecture](image/img1.png)
 
 ## 2. Analyse de Fonctionnement
-[Architecture](image/img2.png)
+![Architecture](image/img2.png)
 Flux de requête typique :
 
 1. **Client** → Envoi requête
@@ -54,7 +54,7 @@ Flux de requête typique :
 - **Architecture parallèle** pour haute disponibilité
 
 ### 🔧 Diagramme Architecture Améliorée
-[Architecture](image/img3.png)
+![Architecture](image/img3.png)
 
 ### ✅ Avantages
 - **Moins de charge** par Gateway → meilleure scalabilité
@@ -80,7 +80,7 @@ Flux de requête typique :
 
 
 ## 4. Architecture Améliorée - Middleware + 2 API Gateway + Fallbacks parallele
-[Architecture](image/img4.png)
+![Architecture](image/img4.png)
 ## 5. Comparaison des Deux Architectures
 
 | Critère | 1 API Gateway | 2 API Gateway + Fallback Parallèle |
