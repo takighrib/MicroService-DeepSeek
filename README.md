@@ -115,7 +115,8 @@ Typical request flow:
 | **Isolation** | ❌ Strong coupling | ✅ Domain-level isolation |
 
 ---
-
+## 4. Parallel Architecture
+![Architecture](image/img5.png)
 ## 6. Technical Proofs
 
 ### 🧩 Proof 1: Client-side optimization with functional separation and multithreading
