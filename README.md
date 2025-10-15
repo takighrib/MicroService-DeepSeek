@@ -16,6 +16,7 @@ Ce document présente l'évolution de l'architecture microservices de DeepSeek, 
 4. [Architecture Parallèle](#4-architecture-parallèle)
 5. [Comparaison des Architectures](#5-comparaison-des-deux-architectures)
 6. [Preuves Techniques](#6-preuves-techniques)
+7. [Vue d'ensemble des 7 couches](#7-vue-densemble-des-7-couches)
 
 ---
 
@@ -124,51 +125,92 @@ L'architecture améliorée avec **middleware, multiples gateways et services par
 - ✅ **Performance optimisée** via parallélisation des services  
 - ✅ **Scalabilité horizontale** naturelle  
 
-Cette approche est particulièrement adaptée pour les applications critiques nécessitant une haute disponibilité et performance.
-
 ---
 
-## 6. 🧠 Preuves Techniques
+## 6. Preuves Techniques
 
 ### 🧩 Preuve 1 : Optimisation côté client par découpage fonctionnel et multithreading
-
 L'architecture client est conçue pour être à la fois légère et performante grâce à une division du code en fonctions indépendantes et spécifiques à une tâche donnée.  
 Chaque fonction est ensuite exécutée dans un thread séparé, ce qui permet d'exploiter pleinement la puissance du processeur et d'effectuer plusieurs traitements en parallèle.  
-Cette approche réduit les temps d'attente, améliore la réactivité de l'interface et optimise l'utilisation des ressources matérielles.  
-En cas de défaillance d'un thread, seul le traitement concerné est impacté, ce qui renforce la fiabilité du système.  
-
 👉 **Résultat :** exécution plus rapide et robuste côté client.
 
----
-
 ### 🌐 Preuve 2 : Haute disponibilité grâce à la réplication des serveurs
-
-Afin d'assurer une disponibilité continue du service, chaque microservice est répliqué sur plusieurs serveurs.  
-Cette redondance permet au système de continuer à fonctionner même si un ou plusieurs serveurs tombent en panne.  
-Lorsqu'un serveur devient indisponible, une autre instance identique prend automatiquement le relais, assurant la continuité du traitement des requêtes sans interruption perceptible.  
-
+Chaque microservice est répliqué sur plusieurs serveurs. En cas de panne d’un serveur, une autre instance prend automatiquement le relais.  
 👉 **Résultat :** meilleure répartition de charge et tolérance accrue aux pannes.
 
----
-
 ### ⚙️ Preuve 3 : Parallélisme global assuré par un système d'exploitation homogène
-
-Le parallélisme à grande échelle est rendu possible par le déploiement d’un **système d’exploitation homogène** ou d’une **couche d’abstraction commune** sur tous les nœuds.  
-Cela garantit que la synchronisation, la communication et la gestion des processus sont cohérentes et prévisibles sur l’ensemble du cluster.  
-
-👉 **Résultat :** exécution parallèle stable, coordination efficace et performances homogènes sur tous les serveurs.
-
----
+Un système homogène assure la cohérence de la communication et de la synchronisation sur tous les nœuds.  
+👉 **Résultat :** exécution parallèle stable et performances homogènes.
 
 ### 🔁 Preuve 4 : Résilience et débit garantis par le routage parallèle et le fallback
+Les **API Gateways** sont organisées en paires avec des mécanismes de fallback.  
+Le routage parallèle permet de traiter simultanément un grand nombre de requêtes.  
+👉 **Résultat :** haute résilience et performance optimisée.
 
-Les **API Gateways** sont organisées en paires avec des mécanismes de **fallback** qui assurent une continuité de service.  
-En cas de panne d’une gateway ou d’un microservice, une autre instance prend instantanément le relais.  
-Le **routage parallèle** permet de traiter simultanément un grand nombre de requêtes, augmentant ainsi le débit global.  
+---
 
-👉 **Résultat :** meilleure performance, haute résilience et expérience utilisateur sans interruption.
+## 7. Vue d'ensemble des 7 couches
+![Architecture](image/img6.png)
+
+### Couche 1: Client
+- **Rôle**: Point d'entrée des utilisateurs finaux  
+- **Caractéristiques**: Application multi-threadée  
+- **Avantages**: Réactivité améliorée, capacité multi-session  
+- **Protocoles**: Communication HTTP/REST vers middleware  
+
+### Couche 2: Middleware
+- **Rôle**: Orchestration et répartition de charge  
+- **Composants**: Load Balancer + Routeur dynamique  
+- **Fonctionnalités**: Distribution équilibrée, routage intelligent, gestion sessions  
+- **Bénéfices**: Optimisation des ressources, scalabilité horizontale  
+
+### Couche 3: API Gateway
+- **Rôle**: Gestion centralisée des API et sécurité  
+- **Architecture**: Double gateway avec fallback  
+- **Fonctionnalités**: Circuit Breaker, cache, auth, rate limiting  
+- **Redondance**: Failover automatique  
+
+### Couche 4: Microservices
+- **Rôle**: Logique métier découpée  
+- **Services principaux**: Auth, User, Orders, Analytics  
+- **Pattern**: Réplication pour haute disponibilité  
+- **Avantages**: Déploiement indépendant, évolutivité granulaire  
+
+### Couche 5: Données
+- **Rôle**: Persistance et gestion des données  
+- **Architecture**: Bases spécialisées par domaine  
+- **Synchronisation**: Réplication entre BDD  
+- **Avantages**: Isolation des données, performance, cohérence  
+
+### Couche 6: Génération Vidéo IA
+- **Rôle**: Production automatisée de contenu vidéo  
+- **Composants**: Orchestrateur IA, moteur vidéo, moteur render  
+- **Flux de données**: Analytics → Orchestrateur → Feedback loop  
+- **Stockage**: Bases dédiées vidéos et assets  
+
+### Couche 7: MCP & Automatisation
+- **Rôle**: Intégration externe et automatisation  
+- **Composants**: Serveur MCP, Bridge API, Workflow Engine, Task Scheduler, Monitoring Service  
+- **Intégrations**: Déploiement automatisé, monitoring cross-platform, orchestration workflow  
+
+### Environnement Distribué Synchronisé
+- Toutes les couches opèrent dans un environnement unifié  
+- Mécanismes de cohérence des données entre services  
+- **Avantages**: Cohérence globale, tolérance aux pannes, scalabilité horizontale  
+
+### Avantages de cette Architecture
+- Résilience et redondance  
+- Scalabilité indépendante par couche  
+- Maintenabilité et découplage  
+- Évolutivité et intégration facile  
+- Performance optimisée  
+- Connectivité étendue via MCP et APIs  
+
+### Cas d'Usage Typiques
+1. **Génération vidéo**: Utilisateur → Analytics → IA → Vidéo livrée  
+2. **Automatisation MCP**: API → Workflows automatisés → Monitoring  
+3. **Scaling dynamique**: Pic de charge → Load Balancer → Instances supplémentaires  
 
 ---
 
 *Documentation technique DeepSeek — Architecture Microservices Avancée (Version 2.0)*
-
