@@ -460,6 +460,781 @@ Sécurité & Une seule couche de sécurité & Deux points d’entrée : stratég
 \end{tikzpicture}
 \caption{Architecture avec Middleware, 2 API Gateways et services parallélisés}
 \end{figure}
+\begin{figure}[htbp]
+\centering
+\scalebox{0.85}{
+\begin{tikzpicture}[
+    node distance=0.7cm and 1.5cm,
+    % Styles améliorés avec ombres et dégradés
+    client/.style={rectangle, draw=blue!70, fill=blue!15, thick, minimum width=2.5cm, minimum height=0.9cm, align=center, font=\small\bfseries, rounded corners=3pt, drop shadow},
+    middleware/.style={rectangle, draw=green!80, fill=green!15, thick, minimum width=3cm, minimum height=0.9cm, align=center, font=\small\bfseries, rounded corners=3pt, drop shadow},
+    gateway/.style={rectangle, draw=red!70, fill=red!12, thick, minimum width=2.4cm, minimum height=0.9cm, align=center, font=\small, rounded corners=3pt, drop shadow},
+    service/.style={rectangle, draw=orange!80, fill=orange!12, thick, minimum width=1.6cm, minimum height=0.6cm, align=center, font=\scriptsize, rounded corners=2pt},
+    sync/.style={dashed, thick, gray!60, line width=1pt},
+    thread/.style={->, blue!70, thick, line width=0.8pt},
+    fallback/.style={<->, red!70, dashed, thick, line width=1pt},
+    connect/.style={->, thick, black!70, line width=0.8pt},
+    label/.style={font=\tiny, text=gray!80}
+]
+
+% --- Client Layer ---
+\node[client] (client) {Client\\[-2pt]\scriptsize Multi-threaded};
+
+% Threads visuels améliorés
+\foreach \x in {-0.4, -0.15, 0.1, 0.35} {
+  \draw[thread, line width=1pt] ([yshift=-0.15cm,xshift=\x cm]client.south) -- ++(0,-0.3);
+}
+\node[label, below=0.05cm of client] {\textit{Requêtes parallèles}};
+
+% --- Middleware Layer ---
+\node[middleware, below=1.2cm of client] (middleware) {Middleware\\[-2pt]\scriptsize Load Balancer + Router};
+
+% --- Gateway Layer ---
+\node[gateway, below left=1cm and 1.5cm of middleware] (gateway1) {API Gateway 1\\[-2pt]\scriptsize Circuit Breaker};
+\node[gateway, below right=1cm and 1.5cm of middleware] (gateway2) {API Gateway 2\\[-2pt]\scriptsize Circuit Breaker};
+
+% Cadre pour les gateways
+\draw[gray!40, rounded corners=4pt, thick] ($(gateway1.north west)+(-0.2,0.15)$) rectangle ($(gateway2.south east)+(0.2,-0.15)$);
+\node[label, above=0.05cm of gateway1.north west, anchor=south west] {Gateway Layer};
+
+% --- Service Layer for Gateway 1 ---
+\node[service, below left=0.7cm and 0.2cm of gateway1] (auth1) {Auth\\Service 1};
+\node[service, right=0.4cm of auth1] (auth2) {Auth\\Service 2};
+\node[service, below=0.3cm of auth1] (user1) {User\\Service 1};
+\node[service, right=0.4cm of user1] (user2) {User\\Service 2};
+
+% --- Service Layer for Gateway 2 ---
+\node[service, below left=0.7cm and 0.2cm of gateway2] (orders1) {Orders\\Service 1};
+\node[service, right=0.4cm of orders1] (orders2) {Orders\\Service 2};
+\node[service, below=0.3cm of orders1] (analytics1) {Analytics\\Service 1};
+\node[service, right=0.4cm of analytics1] (analytics2) {Analytics\\Service 2};
+
+% --- Main Connections ---
+\draw[connect, line width=1pt] (client) -- node[right, label] {HTTP/gRPC} (middleware);
+\draw[connect] (middleware.south) -| node[near start, label, anchor=south] {Route} (gateway1.north);
+\draw[connect] (middleware.south) -| node[near start, label, anchor=south] {Route} (gateway2.north);
+
+% Gateway 1 to Services
+\draw[connect] (gateway1.south) -- ++(0,-0.25) -| (auth1.north);
+\draw[connect] (gateway1.south) -- ++(0,-0.25) -| (auth2.north);
+\draw[connect] (gateway1.south) -- ++(0,-0.5) -| (user1.north);
+\draw[connect] (gateway1.south) -- ++(0,-0.5) -| (user2.north);
+
+% Gateway 2 to Services
+\draw[connect] (gateway2.south) -- ++(0,-0.25) -| (orders1.north);
+\draw[connect] (gateway2.south) -- ++(0,-0.25) -| (orders2.north);
+\draw[connect] (gateway2.south) -- ++(0,-0.5) -| (analytics1.north);
+\draw[connect] (gateway2.south) -- ++(0,-0.5) -| (analytics2.north);
+
+% --- Fallback/Redundancy Connections ---
+\draw[fallback] (gateway1.east) -- node[above, label] {Failover} (gateway2.west);
+\draw[fallback] (auth1.east) -- node[above, label, font=\tiny] {Replica} (auth2.west);
+\draw[fallback] (user1.east) -- (user2.west);
+\draw[fallback] (orders1.east) -- node[above, label, font=\tiny] {Replica} (orders2.west);
+\draw[fallback] (analytics1.east) -- (analytics2.west);
+
+% --- Distributed Synchronization Zone ---
+\draw[sync, rounded corners=4pt] ($(auth1.north west)+(-0.25,0.25)$) rectangle ($(analytics2.south east)+(0.25,-0.35)$);
+\node[gray!70, below=0.1cm of analytics1, align=center, font=\small\bfseries, xshift=0.7cm] {Système Distribué};
+\node[gray!60, below=0.35cm of analytics1, align=center, font=\tiny, xshift=0.7cm] {Synchronisation via Message Queue/Event Bus};
+
+% --- Legend ---
+\begin{scope}[shift={($(gateway2.east)+(2.5,-1)$)}]
+  \node[label, anchor=west, font=\scriptsize\bfseries] at (0,0.8) {Légende:};
+  \draw[connect] (0,0.4) -- (0.6,0.4) node[right, label] {Communication};
+  \draw[fallback] (0,0) -- (0.6,0) node[right, label] {Failover/Replica};
+  \draw[thread] (0,-0.4) -- (0.6,-0.4) node[right, label] {Thread parallèle};
+\end{scope}
+
+\end{tikzpicture}
+}
+\caption{Architecture microservices optimisée avec parallélisme, haute disponibilité et réplication des services. Le système intègre un load balancer intelligent, des API gateways redondantes avec Fallback, et une synchronisation distribuée assurant la cohérence des données entre les instances répliquées.}
+\label{fig:architecture_optimisee}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.95}{
+\begin{tikzpicture}[
+    node distance=0.65cm and 1.3cm,
+    % Styles améliorés avec meilleur contraste
+    layer/.style={font=\LARGE\bfseries, text=gray!60},
+    client/.style={rectangle, draw=blue!80, fill=blue!15, very thick, minimum width=3.5cm, minimum height=1cm, align=center, font=\normalsize\bfseries, rounded corners=5pt, drop shadow={opacity=0.4, shadow xshift=2pt, shadow yshift=-2pt}},
+    middleware/.style={rectangle, draw=green!80, fill=green!15, very thick, minimum width=4cm, minimum height=1cm, align=center, font=\normalsize\bfseries, rounded corners=5pt, drop shadow={opacity=0.4, shadow xshift=2pt, shadow yshift=-2pt}},
+    gateway/.style={rectangle, draw=red!80, fill=red!15, very thick, minimum width=3.2cm, minimum height=1cm, align=center, font=\normalsize, rounded corners=5pt, drop shadow={opacity=0.4, shadow xshift=2pt, shadow yshift=-2pt}},
+    service/.style={rectangle, draw=orange!80, fill=orange!15, very thick, minimum width=2.4cm, minimum height=0.8cm, align=center, font=\normalsize, rounded corners=4pt, drop shadow={opacity=0.3, shadow xshift=1.5pt, shadow yshift=-1.5pt}},
+    database/.style={cylinder, draw=brown!80, fill=brown!15, very thick, minimum width=1.6cm, minimum height=0.75cm, align=center, font=\small, shape border rotate=90, aspect=0.22, drop shadow={opacity=0.3, shadow xshift=1.5pt, shadow yshift=-1.5pt}},
+    % Styles de connexions optimisés
+    request/.style={->, very thick, blue!80, line width=1.8pt},
+    loadbalance/.style={->, very thick, green!80, line width=1.8pt},
+    servicecall/.style={->, very thick, orange!80, line width=1.4pt},
+    fallback/.style={<->, red!80, dashed, very thick, line width=1.8pt},
+    sync/.style={<->, gray!70, thick, line width=1.2pt}
+]
+
+% =============================================================================
+% COUCHE 1: CLIENT
+% =============================================================================
+\node[layer] at (0,7) (client_label) {Couche Client};
+\node[client] at (0,5.5) (client) {Application Client\\[-2pt]\small Multi-threadée};
+
+% Threads clients très visibles
+\foreach \x in {-0.6, -0.3, 0, 0.3, 0.6} {
+    \draw[request, line width=2.2pt] ([yshift=-0.15cm,xshift=\x cm]client.south) -- ++(0,-0.45);
+}
+
+% =============================================================================
+% COUCHE 2: MIDDLEWARE
+% =============================================================================
+\node[layer] at (0,4.2) (middleware_label) {Couche Middleware};
+\node[middleware] at (0,2.9) (middleware) {Load Balancer\\[-2pt]\small Routeur Dynamique};
+
+% Connexion Client -> Middleware
+\draw[request] (client) -- node[right, font=\normalsize, text=blue!90, fill=white, inner sep=3pt, rounded corners=2pt] {HTTP/REST} (middleware);
+
+% =============================================================================
+% COUCHE 3: GATEWAYS
+% =============================================================================
+\node[layer] at (0,1.5) (gateway_label) {Couche API Gateway};
+\node[gateway] at (-3.8,0) (gateway1) {API Gateway A\\[-2pt]\small Fallback};
+\node[gateway] at (3.8,0) (gateway2) {API Gateway B\\[-2pt]\small Fallback};
+
+% Connexions Middleware -> Gateways
+\draw[loadbalance] (middleware.south) -- ++(0,-0.55) -| node[near start, left, font=\normalsize, text=green!90, fill=white, inner sep=3pt, rounded corners=2pt] {Balance} (gateway1.north);
+\draw[loadbalance] (middleware.south) -- ++(0,-0.55) -| (gateway2.north);
+
+% Redondance entre gateways
+\draw[fallback] (gateway1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=3pt, rounded corners=2pt] {Failover} (gateway2);
+
+% =============================================================================
+% COUCHE 4: MICROSERVICES
+% =============================================================================
+\node[layer] at (0,-1.5) (services_label) {Couche Microservices};
+
+% Services Gateway A - mieux espacés
+\node[service] at (-5,-2.8) (auth1) {Auth\\[-1pt]\small Service 1};
+\node[service] at (-2.6,-2.8) (auth2) {Auth\\[-1pt]\small Service 2};
+\node[service] at (-5,-4.4) (user1) {User\\[-1pt]\small Service 1};
+\node[service] at (-2.6,-4.4) (user2) {User\\[-1pt]\small Service 2};
+
+% Services Gateway B - mieux espacés
+\node[service] at (2.6,-2.8) (orders1) {Orders\\[-1pt]\small Service 1};
+\node[service] at (5,-2.8) (orders2) {Orders\\[-1pt]\small Service 2};
+\node[service] at (2.6,-4.4) (analytics1) {Analytics\\[-1pt]\small Service 1};
+\node[service] at (5,-4.4) (analytics2) {Analytics\\[-1pt]\small Service 2};
+
+% Connexions Gateways -> Services
+\foreach \service in {auth1, auth2, user1, user2} {
+    \draw[servicecall] (gateway1.south) -- ++(0,-0.45) -| (\service.north);
+}
+\foreach \service in {orders1, orders2, analytics1, analytics2} {
+    \draw[servicecall] (gateway2.south) -- ++(0,-0.45) -| (\service.north);
+}
+
+% Redondance entre services
+\draw[fallback] (auth1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (auth2);
+\draw[fallback] (user1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (user2);
+\draw[fallback] (orders1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (orders2);
+\draw[fallback] (analytics1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (analytics2);
+
+% =============================================================================
+% COUCHE 5: DONNÉES
+% =============================================================================
+\node[layer] at (0,-5.7) (data_label) {Couche Données};
+
+% Bases de données bien espacées
+\node[database] at (-5,-7) (db1) {DB\\[-1pt]Auth};
+\node[database] at (-2.6,-7) (db2) {DB\\[-1pt]Users};
+\node[database] at (2.6,-7) (db3) {DB\\[-1pt]Orders};
+\node[database] at (5,-7) (db4) {DB\\[-1pt]Analytics};
+
+% Connexions Services -> BDD
+\draw[servicecall] (auth1) -- (db1);
+\draw[servicecall] (user1) -- (db2);
+\draw[servicecall] (orders1) -- (db3);
+\draw[servicecall] (analytics1) -- (db4);
+
+% Synchronisation des BDD
+\draw[sync] (db1) -- node[above, font=\small, text=gray!80, fill=white, inner sep=2pt] {Sync} (db2);
+\draw[sync] (db2) -- (db3);
+\draw[sync] (db3) -- node[above, font=\small, text=gray!80, fill=white, inner sep=2pt] {Sync} (db4);
+
+% =============================================================================
+% SYSTÈME DE GÉNÉRATION DE VIDÉOS (NOUVELLE COUCHE)
+% =============================================================================
+\node[layer] at (0,-8.8) (video_label) {Couche Génération Vidéo};
+
+% Module principal de génération vidéo
+\node[rectangle, draw=purple!80, fill=purple!15, very thick, minimum width=4.2cm, minimum height=1cm, align=center, font=\normalsize\bfseries, rounded corners=5pt, drop shadow={opacity=0.4, shadow xshift=2pt, shadow yshift=-2pt}] at (0,-10) (video_generator) {Video Generator\\[-2pt]\small AI-Powered};
+
+% Sous-modules du générateur
+\node[rectangle, draw=purple!70, fill=purple!10, thick, minimum width=1.8cm, minimum height=0.65cm, font=\small, rounded corners=3pt, drop shadow={opacity=0.25}] at (-4.5,-10) (encoder) {Video\\Encoder};
+\node[rectangle, draw=purple!70, fill=purple!10, thick, minimum width=1.8cm, minimum height=0.65cm, font=\small, rounded corners=3pt, drop shadow={opacity=0.25}] at (4.5,-10) (renderer) {Video\\Renderer};
+
+% Storage vidéo
+\node[database] at (-2.5,-11.5) (video_storage) {Video\\Storage};
+\node[database] at (2.5,-11.5) (cache_storage) {Cache\\CDN};
+
+% Connexions Analytics -> Video Generator
+\draw[->, very thick, purple!80, line width=1.6pt] (analytics1.south) -- ++(0,-0.5) -| node[near start, left, font=\small, text=purple!90, fill=white, inner sep=2pt] {Data} (video_generator.north west);
+\draw[->, very thick, purple!80, line width=1.6pt] (analytics2.south) -- ++(0,-0.5) -| (video_generator.north east);
+
+% Connexions BDD -> Video Generator (pour templates/assets)
+\draw[->, thick, purple!70, line width=1.2pt, dashed] (db3.south) -- ++(0,-0.8) -| (video_generator.north);
+
+% Connexions internes du système vidéo
+\draw[->, very thick, purple!80, line width=1.4pt] (video_generator.west) -- (encoder.east);
+\draw[->, very thick, purple!80, line width=1.4pt] (video_generator.east) -- (renderer.west);
+\draw[->, thick, purple!70, line width=1.2pt] (encoder.south) -- ++(0,-0.3) -| (video_storage.north);
+\draw[->, thick, purple!70, line width=1.2pt] (renderer.south) -- ++(0,-0.3) -| (cache_storage.north);
+
+% Synchronisation storage
+\draw[sync] (video_storage) -- node[above, font=\small, text=gray!80, fill=white, inner sep=2pt] {Sync} (cache_storage);
+
+% Feedback vers analytics
+\draw[->, thick, orange!70, line width=1.2pt, dotted, bend right=25] (video_storage.west) -- ++(-1.5,0) |- node[near end, left, font=\tiny, text=orange!80] {Metrics} (analytics1.west);
+
+% Annotations pour le système vidéo
+\node[font=\tiny, text=purple!80, align=center] at (-4.5,-10.8) {Compression\\Optimisation};
+\node[font=\tiny, text=purple!80, align=center] at (4.5,-10.8) {Effets\\Transitions};
+
+% =============================================================================
+% CADRE SYSTÈME DISTRIBUÉ (mis à jour pour inclure vidéo)
+% =============================================================================
+\draw[dashed, very thick, gray!60, rounded corners=12pt, line width=1.8pt] 
+    (-7.5,2) rectangle (7.5,-12.2);
+\node[gray!70, font=\LARGE\bfseries] at (0,-11.9) {Environnement Distribué Synchronisé};
+
+% =============================================================================
+% LÉGENDE COMPACTE EN BAS (mise à jour)
+% =============================================================================
+\begin{scope}[shift={(0,-13.5)}]
+    \node[anchor=center, font=\Large\bfseries, text=gray!70] at (0,0.6) {Légende des flux};
+    
+    % Ligne 1
+    \draw[request] (-5,0) -- (-3.7,0) node[right, font=\small] {Requêtes};
+    \draw[loadbalance] (-2.5,0) -- (-1.2,0) node[right, font=\small] {Load balance};
+    \draw[servicecall] (0,0) -- (1.3,0) node[right, font=\small] {Service calls};
+    \draw[->, very thick, purple!80, line width=1.6pt] (3,0) -- (4.3,0) node[right, font=\small] {Vidéo processing};
+    
+    % Ligne 2
+    \draw[fallback] (-3,-0.6) -- (-1.7,-0.6) node[right, font=\small] {Failover};
+    \draw[sync] (-0.3,-0.6) -- (1,-0.6) node[right, font=\small] {Sync};
+    \draw[->, thick, orange!70, line width=1.2pt, dotted] (2,-0.6) -- (3.3,-0.6) node[right, font=\small] {Feedback};
+\end{scope}
+
+\end{tikzpicture}
+}
+\caption{Architecture microservices en 5 couches avec haute disponibilité. \textbf{Client}: application multi-threadée. \textbf{Middleware}: orchestration et load balancing intelligent. \textbf{Gateway}: gestion d'API avec failover automatique. \textbf{Microservices}: logique métier répliquée pour la résilience. \textbf{Données}: persistance distribuée avec synchronisation continue. Chaque couche garantit redondance et tolérance aux pannes.}
+\label{fig:architecture_logique}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.85}{
+\begin{tikzpicture}[
+    node distance=0.65cm and 1.3cm,
+    % Styles améliorés avec meilleur contraste
+    layer/.style={font=\large\bfseries, text=gray!60},
+    client/.style={rectangle, draw=blue!80, fill=blue!15, very thick, minimum width=3.5cm, minimum height=1cm, align=center, font=\normalsize\bfseries, rounded corners=5pt},
+    middleware/.style={rectangle, draw=green!80, fill=green!15, very thick, minimum width=4cm, minimum height=1cm, align=center, font=\normalsize\bfseries, rounded corners=5pt},
+    gateway/.style={rectangle, draw=red!80, fill=red!15, very thick, minimum width=3.2cm, minimum height=1cm, align=center, font=\normalsize, rounded corners=5pt},
+    service/.style={rectangle, draw=orange!80, fill=orange!15, very thick, minimum width=2.4cm, minimum height=0.8cm, align=center, font=\normalsize, rounded corners=4pt},
+    database/.style={cylinder, draw=brown!80, fill=brown!15, very thick, minimum width=1.6cm, minimum height=0.75cm, align=center, font=\small, shape border rotate=90, aspect=0.22},
+    % Styles de connexions optimisés
+    request/.style={->, very thick, blue!80, line width=1.8pt},
+    loadbalance/.style={->, very thick, green!80, line width=1.8pt},
+    servicecall/.style={->, very thick, orange!80, line width=1.4pt},
+    fallback/.style={<->, red!80, dashed, very thick, line width=1.8pt},
+    sync/.style={<->, gray!70, thick, line width=1.2pt}
+]
+
+% =============================================================================
+% COUCHE 1: CLIENT
+% =============================================================================
+\node[layer] at (0,7) (client_label) {Couche Client};
+\node[client] at (0,5.5) (client) {Application Client\\[-2pt]\small Multi-threadée};
+
+% Threads clients très visibles
+\foreach \x in {-0.6, -0.3, 0, 0.3, 0.6} {
+    \draw[request, line width=2.2pt] ([yshift=-0.15cm,xshift=\x cm]client.south) -- ++(0,-0.45);
+}
+
+% =============================================================================
+% COUCHE 2: MIDDLEWARE
+% =============================================================================
+\node[layer] at (0,4.2) (middleware_label) {Couche Middleware};
+\node[middleware] at (0,2.9) (middleware) {Load Balancer\\[-2pt]\small Routeur Dynamique};
+
+% Connexion Client -> Middleware
+\draw[request] (client) -- node[right, font=\normalsize, text=blue!90, fill=white, inner sep=3pt, rounded corners=2pt] {HTTP/REST} (middleware);
+
+% =============================================================================
+% COUCHE 3: GATEWAYS
+% =============================================================================
+\node[layer] at (0,1.5) (gateway_label) {Couche API Gateway};
+\node[gateway] at (-3.8,0) (gateway1) {API Gateway A\\[-2pt]\small Fallback};
+\node[gateway] at (3.8,0) (gateway2) {API Gateway B\\[-2pt]\small Fallback};
+
+% Connexions Middleware -> Gateways
+\draw[loadbalance] (middleware.south) -- ++(0,-0.55) -| node[near start, left, font=\normalsize, text=green!90, fill=white, inner sep=3pt, rounded corners=2pt] {Balance} (gateway1.north);
+\draw[loadbalance] (middleware.south) -- ++(0,-0.55) -| (gateway2.north);
+
+% Redondance entre gateways
+\draw[fallback] (gateway1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=3pt, rounded corners=2pt] {Failover} (gateway2);
+
+% =============================================================================
+% COUCHE 4: MICROSERVICES
+% =============================================================================
+\node[layer] at (0,-1.5) (services_label) {Couche Microservices};
+
+% Services Gateway A - mieux espacés
+\node[service] at (-5,-2.8) (auth1) {Auth\\[-1pt]\small Service 1};
+\node[service] at (-2.6,-2.8) (auth2) {Auth\\[-1pt]\small Service 2};
+\node[service] at (-5,-4.4) (user1) {User\\[-1pt]\small Service 1};
+\node[service] at (-2.6,-4.4) (user2) {User\\[-1pt]\small Service 2};
+
+% Services Gateway B - mieux espacés
+\node[service] at (2.6,-2.8) (orders1) {Orders\\[-1pt]\small Service 1};
+\node[service] at (5,-2.8) (orders2) {Orders\\[-1pt]\small Service 2};
+\node[service] at (2.6,-4.4) (analytics1) {Analytics\\[-1pt]\small Service 1};
+\node[service] at (5,-4.4) (analytics2) {Analytics\\[-1pt]\small Service 2};
+
+% Connexions Gateways -> Services
+\foreach \service in {auth1, auth2, user1, user2} {
+    \draw[servicecall] (gateway1.south) -- ++(0,-0.45) -| (\service.north);
+}
+\foreach \service in {orders1, orders2, analytics1, analytics2} {
+    \draw[servicecall] (gateway2.south) -- ++(0,-0.45) -| (\service.north);
+}
+
+% Redondance entre services
+\draw[fallback] (auth1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (auth2);
+\draw[fallback] (user1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (user2);
+\draw[fallback] (orders1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (orders2);
+\draw[fallback] (analytics1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (analytics2);
+
+% =============================================================================
+% COUCHE 5: DONNÉES
+% =============================================================================
+\node[layer] at (0,-5.7) (data_label) {Couche Données};
+
+% Bases de données bien espacées
+\node[database] at (-5,-7) (db1) {DB\\[-1pt]Auth};
+\node[database] at (-2.6,-7) (db2) {DB\\[-1pt]Users};
+\node[database] at (2.6,-7) (db3) {DB\\[-1pt]Orders};
+\node[database] at (5,-7) (db4) {DB\\[-1pt]Analytics};
+
+% Connexions Services -> BDD
+\draw[servicecall] (auth1) -- (db1);
+\draw[servicecall] (user1) -- (db2);
+\draw[servicecall] (orders1) -- (db3);
+\draw[servicecall] (analytics1) -- (db4);
+
+% Synchronisation des BDD
+\draw[sync] (db1) -- node[above, font=\small, text=gray!80, fill=white, inner sep=2pt] {Sync} (db2);
+\draw[sync] (db2) -- (db3);
+\draw[sync] (db3) -- node[above, font=\small, text=gray!80, fill=white, inner sep=2pt] {Sync} (db4);
+
+% =============================================================================
+% CADRE SYSTÈME DISTRIBUÉ
+% =============================================================================
+\draw[dashed, very thick, gray!60, rounded corners=12pt, line width=1.8pt] 
+    (-7.5,2) rectangle (7.5,-8);
+\node[gray!70, font=\large\bfseries] at (0,-7.7) {Environnement Distribué Synchronisé};
+
+% =============================================================================
+% LÉGENDE COMPACTE EN BAS
+% =============================================================================
+\begin{scope}[shift={(0,-9.5)}]
+    \node[anchor=center, font=\large\bfseries, text=gray!70] at (0,0.6) {Légende des flux};
+    
+    % Ligne 1
+    \draw[request] (-4,0) -- (-2.5,0) node[right, font=\small] {Requêtes};
+    \draw[loadbalance] (-1,0) -- (0.5,0) node[right, font=\small] {Load balance};
+    \draw[servicecall] (2,0) -- (3.5,0) node[right, font=\small] {Service calls};
+    
+    % Ligne 2
+    \draw[fallback] (-2.5,-0.7) -- (-1,-0.7) node[right, font=\small] {Failover};
+    \draw[sync] (0.5,-0.7) -- (2,-0.7) node[right, font=\small] {Synchronisation};
+\end{scope}
+
+\end{tikzpicture}
+}
+\caption{Architecture microservices en 5 couches avec haute disponibilité. \textbf{Client}: application multi-threadée. \textbf{Middleware}: orchestration et load balancing intelligent. \textbf{Gateway}: gestion d'API avec failover automatique. \textbf{Microservices}: logique métier répliquée pour la résilience. \textbf{Données}: persistance distribuée avec synchronisation continue. Chaque couche garantit redondance et tolérance aux pannes.}
+\label{fig:architecture_logique}
+\end{figure}
+
+
+\newpage
+
+\section*{Preuves d'optimisation de l'architecture}
+\subsection*{Preuve 1 : Optimisation côté client par découpage fonctionnel et multithreading}
+
+L'architecture client est conçue pour être à la fois légère et performante grâce à une division du code en fonctions indépendantes et spécifiques à une tâche donnée. Chaque fonction est ensuite exécutée dans un thread séparé, ce qui permet d'exploiter pleinement la puissance du processeur et d'effectuer plusieurs traitements en parallèle. Cette approche réduit les temps d'attente, améliore la réactivité de l'interface et optimise l'utilisation des ressources matérielles. En cas de défaillance d'un thread, seul le traitement concerné est impacté, ce qui renforce la fiabilité du système. Cette organisation assure donc une exécution plus rapide et plus robuste, garantissant l'optimalité du côté client.
+
+\subsection*{Preuve 2 : Haute disponibilité grâce à la réplication des serveurs}
+
+Afin d'assurer une disponibilité continue du service, chaque microservice est répliqué sur plusieurs serveurs. Cette redondance permet au système de continuer à fonctionner même si un ou plusieurs serveurs tombent en panne. Ainsi, lorsqu'un serveur devient indisponible, une autre instance identique prend automatiquement le relais, assurant la continuité du traitement des requêtes sans interruption perceptible pour l'utilisateur. Cette stratégie de réplication améliore également la répartition de charge, car les requêtes peuvent être distribuées entre plusieurs serveurs actifs. Par conséquent, la tolérance aux pannes est renforcée et la fiabilité globale du système est significativement augmentée.
+
+\subsection*{Preuve 3 : Parallélisme global assuré par un système d'exploitation homogène}
+
+Le parallélisme à grande échelle est rendu possible par le déploiement d'un système d'exploitation homogène ou d'une couche d'abstraction commune sur l'ensemble des nœuds du système. Cette homogénéité garantit que les mécanismes de synchronisation, de communication et de gestion des processus fonctionnent de manière identique sur tous les serveurs. Elle facilite également la coordination entre les composants, évite les erreurs liées aux différences d'environnement et permet une meilleure prévisibilité des performances. Ainsi, le système peut exécuter plusieurs traitements en parallèle de façon cohérente et synchronisée, ce qui renforce sa stabilité et son efficacité.
+
+\subsection*{Preuve 4 : Résilience et débit garantis par le routage parallèle et le fallback}
+
+Les API Gateways de cette architecture sont organisées en paires avec des mécanismes de fallback permettant une continuité de service en cas de défaillance. Lorsqu'une gateway ou un microservice devient indisponible, une autre instance prend immédiatement le relais pour traiter les requêtes. De plus, le routage est effectué de manière parallèle, ce qui augmente considérablement le débit global du système et permet de répondre simultanément à un grand nombre de demandes. Ce fonctionnement garantit non seulement une meilleure performance, mais aussi une grande robustesse face aux pannes partielles, sans perturber l'expérience utilisateur.
+
+\section*{Ajout d une partie de géneration de vidéo ainsi que un MCP}
+
+
+
+\subsection*{Vue d'ensemble}
+Cette architecture représente une plateforme IA complète organisée en 7 couches distinctes, chacune ayant des responsabilités spécifiques tout en maintenant une cohérence globale grâce à un environnement distribué synchronisé.
+
+\subsection*{Couche 1: Client}
+\begin{itemize}
+\item \textbf{Rôle}: Point d'entrée des utilisateurs finaux
+\item \textbf{Caractéristiques}: Application multi-threadée permettant le traitement parallèle des requêtes
+\item \textbf{Avantages}: Réactivité améliorée, capacité à gérer plusieurs sessions simultanément
+\item \textbf{Protocoles}: Communication via HTTP/REST vers le middleware
+\end{itemize}
+
+\subsection*{Couche 2: Middleware}
+\begin{itemize}
+\item \textbf{Rôle}: Orchestration et répartition de charge
+\item \textbf{Composants}: Load Balancer intelligent + Routeur dynamique
+\item \textbf{Fonctionnalités}: 
+  \begin{itemize}
+  \item Distribution équilibrée des requêtes
+  \item Routage intelligent basé sur la charge
+  \item Gestion des sessions utilisateur
+  \end{itemize}
+\item \textbf{Bénéfices}: Optimisation des ressources, scalabilité horizontale
+\end{itemize}
+
+\subsection*{Couche 3: API Gateway}
+\begin{itemize}
+\item \textbf{Rôle}: Gestion centralisée des API et sécurité
+\item \textbf{Architecture}: Double gateway avec mécanisme de fallback
+\item \textbf{Fonctionnalités}:
+  \begin{itemize}
+  \item Circuit Breaker pour la résilience
+  \ Cache des réponses fréquentes
+  \item Authentification et autorisation
+  \item Rate limiting et throttling
+  \end{itemize}
+\item \textbf{Redondance}: Failover automatique entre les gateways
+\end{itemize}
+
+\subsection*{Couche 4: Microservices}
+\begin{itemize}
+\item \textbf{Rôle}: Logique métier découpée en services spécialisés
+\item \textbf{Services principaux}:
+  \begin{itemize}
+  \item \textbf{Auth}: Gestion de l'authentification et des autorisations
+  \item \textbf{User}: Gestion des profils utilisateurs et préférences
+  \item \textbf{Orders}: Traitement des commandes et transactions
+  \item \textbf{Analytics}: Collecte et analyse des données d'usage
+  \end{itemize}
+\item \textbf{Pattern}: Réplication de chaque service pour la haute disponibilité
+\item \textbf{Avantages}: Déploiement indépendant, évolutivité granulaire
+\end{itemize}
+
+\subsection*{Couche 5: Données}
+\begin{itemize}
+\item \textbf{Rôle}: Persistance et gestion des données
+\item \textbf{Architecture}: Bases de données spécialisées par domaine
+\item \textbf{Synchronisation}: Mécanisme de réplication entre les BDD
+\item \textbf{Avantages}: 
+  \begin{itemize}
+  \item Isolation des données par domaine
+  \item Performance optimisée pour chaque type de requête
+  \item Cohérence des données assurée
+  \end{itemize}
+\end{itemize}
+
+\subsection*{Couche 6: Génération Vidéo IA}
+\begin{itemize}
+\item \textbf{Rôle}: Production automatisée de contenu vidéo
+\item \textbf{Composants}:
+  \begin{itemize}
+  \item \textbf{Orchestrateur IA}: Coordination du processus de génération
+  \item \textbf{Moteur Vidéo}: Génération de contenu via modèles IA
+  \item \textbf{Moteur Render}: Optimisation et rendu GPU
+  \end{itemize}
+\item \textbf{Flux de données}:
+  \begin{itemize}
+  \item Les analytics fournissent les données contextuelles
+  \item L'orchestrateur génère les prompts et configurations
+  \item Feedback loop pour l'amélioration des modèles
+  \end{itemize}
+\item \textbf{Stockage}: Bases dédiées pour les vidéos et assets multimédias
+\end{itemize}
+
+\subsection*{Couche 7: MCP \& Automatisation}
+\begin{itemize}
+\item \textbf{Rôle}: Intégration externe et automatisation des tâches
+\item \textbf{Composants MCP}:
+  \begin{itemize}
+  \item \textbf{Serveur MCP}: Implémentation du Model Context Protocol
+  \item \textbf{Bridge API}: Connecteur vers applications externes
+  \item \textbf{Workflow Engine}: Automatisation des processus métier
+  \item \textbf{Task Scheduler}: Planification des tâches automatisées
+  \item \textbf{Monitoring Service}: Supervision du système
+  \end{itemize}
+\item \textbf{Intégrations}:
+  \begin{itemize}
+  \item Connexion avec outils de développement (VS Code, etc.)
+  \item Automatisation des déploiements
+  \item Monitoring cross-platform
+  \item Orchestration de workflows complexes
+  \end{itemize}
+\end{itemize}
+
+\subsection*{Environnement Distribué Synchronisé}
+\begin{itemize}
+\item \textbf{Cadre global}: Toutes les couches opèrent dans un environnement unifié
+\item \textbf{Synchronisation}: Mécanismes de cohérence des données entre services
+\item \textbf{Avantages}:
+  \begin{itemize}
+  \item Cohérence de l'état global du système
+  \item Tolérance aux pannes améliorée
+  \item Scalabilité horizontale transparente
+  \end{itemize}
+\end{itemize}
+\subsection*{Avantages de cette Architecture}
+\begin{itemize}
+\item \textbf{Résilience}: Redondance à tous les niveaux avec mécanismes de fallback
+\item \textbf{Scalabilité}: Chaque couche peut être scale indépendamment
+\item \textbf{Maintenabilité}: Services découplés et responsabilités claires
+\item \textbf{Évolutivité}: Nouveaux services et fonctionnalités facilement intégrables
+\item \textbf{Performance}: Traitement parallèle et optimisations spécifiques
+\item \textbf{Intégration}: Connectivité étendue via MCP et APIs
+\end{itemize}
+
+\subsection*{Cas d'Usage Typiques}
+\begin{enumerate}
+\item \textbf{Génération de contenu vidéo}: Un utilisateur demande la création d'une vidéo → Analytics fournissent le contexte → IA génère le contenu → Vidéo stockée et livrée
+\item \textbf{Automatisation via MCP}: Un développeur intègre l'API → Workflows automatisés déclenchés → Tâches planifiées et exécutées → Résultats monitorés
+\item \textbf{Scaling dynamique}: Pic de charge détecté → Load Balancer redistribue → Nouveaux instances de services déployées → Synchronisation maintenue
+\end{enumerate}
+
+Cette architecture représente une plateforme moderne, scalable et résiliente, parfaitement adaptée pour les applications IA nécessitant à la fois une forte capacité de traitement et une grande flexibilité d'intégration.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.8}{
+\begin{tikzpicture}[
+    node distance=0.65cm and 1.3cm,
+    % Styles améliorés
+    layer/.style={font=\large\bfseries, text=gray!60},
+    client/.style={rectangle, draw=blue!80, fill=blue!15, very thick, minimum width=3.5cm, minimum height=1cm, align=center, font=\normalsize\bfseries, rounded corners=5pt},
+    middleware/.style={rectangle, draw=green!80, fill=green!15, very thick, minimum width=4cm, minimum height=1cm, align=center, font=\normalsize\bfseries, rounded corners=5pt},
+    gateway/.style={rectangle, draw=red!80, fill=red!15, very thick, minimum width=3.2cm, minimum height=1cm, align=center, font=\normalsize, rounded corners=5pt},
+    service/.style={rectangle, draw=orange!80, fill=orange!15, very thick, minimum width=2.4cm, minimum height=0.8cm, align=center, font=\normalsize, rounded corners=4pt},
+    database/.style={cylinder, draw=brown!80, fill=brown!15, very thick, minimum width=1.6cm, minimum height=0.75cm, align=center, font=\small, shape border rotate=90, aspect=0.22},
+    ai/.style={rectangle, draw=purple!80, fill=purple!15, very thick, minimum width=3cm, minimum height=0.9cm, align=center, font=\normalsize\bfseries, rounded corners=5pt},
+    external/.style={rectangle, draw=violet!80, fill=violet!15, very thick, minimum width=3cm, minimum height=0.9cm, align=center, font=\normalsize, rounded corners=5pt},
+    % Styles de connexions
+    request/.style={->, very thick, blue!80, line width=1.8pt},
+    loadbalance/.style={->, very thick, green!80, line width=1.8pt},
+    servicecall/.style={->, very thick, orange!80, line width=1.4pt},
+    fallback/.style={<->, red!80, dashed, very thick, line width=1.8pt},
+    sync/.style={<->, gray!70, thick, line width=1.2pt},
+    ai_flow/.style={->, very thick, purple!80, line width=1.6pt},
+    external_flow/.style={->, very thick, violet!80, line width=1.6pt}
+]
+
+% =============================================================================
+% COUCHE 1: CLIENT
+% =============================================================================
+\node[layer] at (0,8) (client_label) {Couche Client};
+\node[client] at (0,6.5) (client) {Application Client\\[-2pt]\small Multi-threadée};
+
+% Threads clients
+\foreach \x in {-0.6, -0.3, 0, 0.3, 0.6} {
+    \draw[request, line width=2.2pt] ([yshift=-0.15cm,xshift=\x cm]client.south) -- ++(0,-0.45);
+}
+
+% =============================================================================
+% COUCHE 2: MIDDLEWARE
+% =============================================================================
+\node[layer] at (0,5.2) (middleware_label) {Couche Middleware};
+\node[middleware] at (0,3.9) (middleware) {Load Balancer\\[-2pt]\small Routeur Dynamique};
+
+% Connexion Client -> Middleware
+\draw[request] (client) -- node[right, font=\normalsize, text=blue!90, fill=white, inner sep=3pt, rounded corners=2pt] {HTTP/REST} (middleware);
+
+% =============================================================================
+% COUCHE 3: GATEWAYS
+% =============================================================================
+\node[layer] at (0,2.5) (gateway_label) {Couche API Gateway};
+\node[gateway] at (-3.8,1) (gateway1) {API Gateway A\\[-2pt]\small Fallback};
+\node[gateway] at (3.8,1) (gateway2) {API Gateway B\\[-2pt]\small Fallback};
+
+% Connexions Middleware -> Gateways
+\draw[loadbalance] (middleware.south) -- ++(0,-0.55) -| node[near start, left, font=\normalsize, text=green!90, fill=white, inner sep=3pt, rounded corners=2pt] {Balance} (gateway1.north);
+\draw[loadbalance] (middleware.south) -- ++(0,-0.55) -| (gateway2.north);
+
+% Redondance entre gateways
+\draw[fallback] (gateway1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=3pt, rounded corners=2pt] {Failover} (gateway2);
+
+% =============================================================================
+% COUCHE 4: MICROSERVICES
+% =============================================================================
+\node[layer] at (0,-0.5) (services_label) {Couche Microservices};
+
+% Services Gateway A
+\node[service] at (-5,-2) (auth1) {Auth\\[-1pt]\small Service 1};
+\node[service] at (-2.6,-2) (auth2) {Auth\\[-1pt]\small Service 2};
+\node[service] at (-5,-3.6) (user1) {User\\[-1pt]\small Service 1};
+\node[service] at (-2.6,-3.6) (user2) {User\\[-1pt]\small Service 2};
+
+% Services Gateway B
+\node[service] at (2.6,-2) (orders1) {Orders\\[-1pt]\small Service 1};
+\node[service] at (5,-2) (orders2) {Orders\\[-1pt]\small Service 2};
+\node[service] at (2.6,-3.6) (analytics1) {Analytics\\[-1pt]\small Service 1};
+\node[service] at (5,-3.6) (analytics2) {Analytics\\[-1pt]\small Service 2};
+
+% Connexions Gateways -> Services
+\foreach \service in {auth1, auth2, user1, user2} {
+    \draw[servicecall] (gateway1.south) -- ++(0,-0.45) -| (\service.north);
+}
+\foreach \service in {orders1, orders2, analytics1, analytics2} {
+    \draw[servicecall] (gateway2.south) -- ++(0,-0.45) -| (\service.north);
+}
+
+% Redondance entre services
+\draw[fallback] (auth1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (auth2);
+\draw[fallback] (user1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (user2);
+\draw[fallback] (orders1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (orders2);
+\draw[fallback] (analytics1) -- node[above, font=\normalsize, text=red!90, fill=white, inner sep=2pt, rounded corners=2pt] {Replica} (analytics2);
+
+% =============================================================================
+% COUCHE 5: DONNÉES
+% =============================================================================
+\node[layer] at (0,-4.7) (data_label) {Couche Données};
+
+% Bases de données
+\node[database] at (-5,-5.8) (db1) {DB\\[-1pt]Auth};
+\node[database] at (-2.6,-5.8) (db2) {DB\\[-1pt]Users};
+\node[database] at (2.6,-5.8) (db3) {DB\\[-1pt]Orders};
+\node[database] at (5,-5.8) (db4) {DB\\[-1pt]Analytics};
+
+% Connexions Services -> BDD
+\draw[servicecall] (auth1) -- (db1);
+\draw[servicecall] (user1) -- (db2);
+\draw[servicecall] (orders1) -- (db3);
+\draw[servicecall] (analytics1) -- (db4);
+
+% Synchronisation des BDD
+\draw[sync] (db1) -- node[above, font=\small, text=gray!80, fill=white, inner sep=2pt] {Sync} (db2);
+\draw[sync] (db2) -- (db3);
+\draw[sync] (db3) -- node[above, font=\small, text=gray!80, fill=white, inner sep=2pt] {Sync} (db4);
+
+% =============================================================================
+% COUCHE 6: GÉNÉRATION VIDÉO IA
+% =============================================================================
+\node[layer] at (0,-7) (video_label) {Couche Génération Vidéo IA};
+
+% Orchestrateur IA Principal
+\node[ai] at (0,-8.2) (ai_orchestrator) {Orchestrateur IA\\[-2pt]\small Video Generation};
+
+% Modules de génération vidéo
+\node[ai] at (-3.5,-9.5) (video_engine) {Moteur Vidéo\\[-2pt]\small AI-Powered};
+\node[ai] at (3.5,-9.5) (render_engine) {Moteur Render\\[-2pt]\small GPU Optimized};
+
+% Stockage vidéo
+\node[database] at (-1.5,-10.8) (video_db) {Video\\Storage};
+\node[database] at (1.5,-10.8) (assets_db) {Assets\\Database};
+
+% Connexions Analytics -> IA
+\draw[ai_flow] (analytics1.south) -- ++(0,-0.8) -| node[near start, left, font=\small, text=purple!90, fill=white, inner sep=2pt] {Data} (ai_orchestrator.north);
+\draw[ai_flow] (analytics2.south) -- ++(0,-0.8) -| (ai_orchestrator.north);
+
+% Connexions IA internes
+\draw[ai_flow] (ai_orchestrator) -- node[left, font=\small, text=purple!90, fill=white, inner sep=2pt] {Prompt} (video_engine);
+\draw[ai_flow] (ai_orchestrator) -- node[right, font=\small, text=purple!90, fill=white, inner sep=2pt] {Config} (render_engine);
+\draw[ai_flow] (video_engine) -- (render_engine);
+\draw[servicecall] (video_engine) -- (video_db);
+\draw[servicecall] (render_engine) -- (assets_db);
+
+% Feedback vers analytics
+\draw[->, thick, orange!70, line width=1.2pt, dotted] (video_db.west) -- ++(-0.5,0) |- node[near end, left, font=\tiny, text=orange!80] {Metrics} (analytics1.west);
+
+% =============================================================================
+% COUCHE 7: INTÉGRATION MCP & AUTOMATISATION
+% =============================================================================
+\node[layer] at (0,-12.2) (mcp_label) {Couche MCP \& Automatisation};
+
+% Serveur MCP Principal
+\node[external] at (-3,-13.5) (mcp_server) {Serveur MCP\\[-2pt]\small Model Context Protocol};
+
+% Connecteurs externes
+\node[external] at (3,-13.5) (api_bridge) {Bridge API\\[-2pt]\small External Apps};
+
+% Services d'automatisation
+\node[service] at (-5,-14.8) (workflow_engine) {Workflow\\Engine};
+\node[service] at (0,-14.8) (task_scheduler) {Task\\Scheduler};
+\node[service] at (5,-14.8) (monitoring) {Monitoring\\Service};
+
+% Connexions MCP
+\draw[external_flow] (mcp_server.north) -- ++(0,0.8) -| node[near start, left, font=\small, text=violet!90, fill=white, inner sep=2pt] {Tools} (ai_orchestrator.south);
+\draw[external_flow] (api_bridge.north) -- ++(0,0.8) -| node[near start, right, font=\small, text=violet!90, fill=white, inner sep=2pt] {Integrations} (ai_orchestrator.south);
+
+% Connexions automation
+\draw[external_flow] (mcp_server) -- (workflow_engine);
+\draw[external_flow] (mcp_server) -- (task_scheduler);
+\draw[external_flow] (api_bridge) -- (monitoring);
+\draw[external_flow] (workflow_engine) -- (task_scheduler);
+\draw[external_flow] (task_scheduler) -- (monitoring);
+
+% Connexion vers services existants
+\draw[external_flow, dashed] (workflow_engine.north) -- ++(0,1.2) -| (orders1.south);
+\draw[external_flow, dashed] (monitoring.north) -- ++(0,1.2) -| (analytics2.south);
+
+% =============================================================================
+% CADRE SYSTÈME DISTRIBUÉ ÉTENDU
+% =============================================================================
+\draw[dashed, very thick, gray!60, rounded corners=12pt, line width=1.8pt] 
+    (-8,4) rectangle (8,-16);
+\node[gray!70, font=\large\bfseries] at (0,-15.7) {Environnement Distribué Synchronisé};
+
+% =============================================================================
+% LÉGENDE COMPLÈTE
+% =============================================================================
+\begin{scope}[shift={(0,-17.5)}]
+    \node[anchor=center, font=\large\bfseries, text=gray!70] at (0,0.6) {Légende des flux};
+    
+    % Ligne 1
+    \draw[request] (-5,0) -- (-3.5,0) node[right, font=\small] {Requêtes};
+    \draw[loadbalance] (-2,0) -- (-0.5,0) node[right, font=\small] {Load balance};
+    \draw[servicecall] (1,0) -- (2.5,0) node[right, font=\small] {Services};
+    
+    % Ligne 2
+    \draw[fallback] (-3.5,-0.7) -- (-2,-0.7) node[right, font=\small] {Failover};
+    \draw[sync] (-0.5,-0.7) -- (1,-0.7) node[right, font=\small] {Sync};
+    \draw[ai_flow] (2.5,-0.7) -- (4,-0.7) node[right, font=\small] {IA Flow};
+    
+    % Ligne 3
+    \draw[external_flow] (-2,-1.4) -- (-0.5,-1.4) node[right, font=\small] {MCP};
+    \draw[->, thick, orange!70, line width=1.2pt, dotted] (1,-1.4) -- (2.5,-1.4) node[right, font=\small] {Feedback};
+\end{scope}
+
+\end{tikzpicture}
+}
+\caption{Architecture microservices étendue avec génération vidéo IA et intégration MCP. \textbf{Couches 1-5}: Architecture de base avec haute disponibilité. \textbf{Couche 6}: Génération vidéo IA avec orchestration intelligente. \textbf{Couche 7}: Intégration MCP (Model Context Protocol) pour l'automatisation des tâches et connectivité externe. Le système supporte la génération de contenu vidéo automatisé et l'intégration avec des applications externes via MCP.}
+\label{fig:architecture_etendue}
+\end{figure}
+\newpage
+
+
+
+
+
 
 \end{document}
 
