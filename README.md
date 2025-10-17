@@ -13,7 +13,7 @@ This document presents the evolution of the DeepSeek microservices architecture,
 1. [Initial Architecture](#1-initial-architecture---1-api-gateway)
 2. [Workflow Analysis](#2-workflow-analysis)
 3. [Enhanced Architecture](#3-enhanced-architecture---middleware--2-api-gateway--parallel-fallbacks)
-4. [Parallel Architecture](#4-parallel-architecture)
+4. [newParallel Architecture](#4-parallel-architecture)
 5. [Architecture Comparison](#5-architecture-comparison)
 6. [Technical Proofs](#6-technical-proofs)
 7. [7-Layer Overview](#7-7-layer-overview)
@@ -97,7 +97,7 @@ Typical request flow:
 
 ---
 
-## 4. Parallel Architecture
+## 4. newParallel Architecture
 ![Architecture](image/img4.png)
 
 ---
